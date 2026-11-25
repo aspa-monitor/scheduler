@@ -1,0 +1,28 @@
+# OPTIONAL. Not used by the dashboard (copy-paste) setup in README.md.
+#
+# The live Worker is managed in the Cloudflare dashboard. This file only
+# records the same settings, so you can switch to the Wrangler CLI or to
+# Workers Builds (Git integration) later without working them out again.
+# If you do switch: a `wrangler deploy` REPLACES the dashboard's Cron
+# Triggers with the list below, so keep it in sync with JOBS in
+# src/worker.js. Secrets set in the dashboard are kept across deploys.
+
+name = "aspa-scheduler"
+main = "src/worker.js"
+compatibility_date = "2026-11-01"
+workers_dev = true
+
+[triggers]
+# Cloudflare cron is UTC. Only enabled jobs need a trigger.
+crons = [
+  "20 * * * *",   # :50 IST  ris-routing-data
+  # "30 * * * *", # :00 IST  rpki-aspa-data   (enable with JOBS entry)
+  # "50 * * * *", # :20 IST  aspa-validation  (enable with JOBS entry)
+]
+
+[observability]
+enabled = true   # Workers Logs (free: 200k events/day, 3-day retention)
+
+# Secrets are never written here. With the CLI they would be set by:
+#   npx wrangler secret put GITHUB_TOKEN
+#   npx wrangler secret put DISPATCH_KEY

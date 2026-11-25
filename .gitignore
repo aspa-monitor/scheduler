@@ -1,0 +1,6 @@
+# Local secrets and tooling (never commit tokens)
+.dev.vars
+.env
+.wrangler/
+node_modules/
+.DS_Store
