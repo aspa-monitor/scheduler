@@ -132,15 +132,26 @@ Cloudflare's secret field.
 
 ### 4.2 Create the Worker and paste the code
 
-1. Go to **Workers & Pages → Create → Create Worker** (or "Start with Hello World").
+> **Do not use "Upload static files".** That option is only for static
+> websites (HTML, CSS, images). It rejects `worker.js` with *"This uploader
+> does not yet support projects that require a build process … Please use
+> `wrangler deploy` instead"*. You don't need wrangler: paste the code into
+> the editor as described below. If a project was created by an upload
+> attempt, delete it first (**its Settings → Delete**) so the name is free.
+
+1. Go to **Workers & Pages → Create** and choose **Start with Hello World!**,
+   not "Upload static files", "Import a repository", or a template.
 2. Name it **`aspa-scheduler`** and click **Deploy**. This deploys the Hello World placeholder.
-3. Click **Edit code**. Delete everything in the editor and paste the full
-   contents of `src/worker.js`. On the Mac, this copies the file to the
-   clipboard:
+3. On the Worker's page, click **Edit code** (top right). Click inside the
+   editor, press **Cmd+A** then **Delete**, and paste the full contents of
+   `src/worker.js` with **Cmd+V**. This Terminal command copies the file to
+   the clipboard (it prints nothing):
    ```bash
    pbcopy < ~/Desktop/ASPA_Validation/scheduler/src/worker.js
    ```
-4. Click **Deploy**.
+4. Click **Deploy** (top right of the editor). The editor's preview should
+   now show `{"error": "not found"}`. That is correct: the Worker answers
+   only `POST /dispatch`, and only once `DISPATCH_KEY` is set.
 5. Under **Settings → Observability**, make sure **Workers Logs** is enabled.
    It is on by default for new Workers.
 
@@ -204,18 +215,29 @@ Add only triggers for enabled jobs. Each one counts toward the 5 per account.
 
 ### 5.1 Right away: manual dispatch (needs `DISPATCH_KEY`)
 
-Copy the Worker URL from the dashboard. It looks like
-`https://aspa-scheduler.<subdomain>.workers.dev`. In Terminal, the first command
-reads the key without showing it or saving it in shell history (paste it,
-then press Enter):
+Copy the Worker's host name from the dashboard. It looks like
+`aspa-scheduler.<subdomain>.workers.dev`. Run these in Terminal one at a time.
+
+Set the host name (replace `<subdomain>`):
+
+```bash
+W=aspa-scheduler.<subdomain>.workers.dev
+```
+
+Read the key without showing it or saving it in shell history (paste it, then press Enter):
 
 ```bash
 read -rs DISPATCH_KEY
 ```
 
+Send the test dispatch. The path **must** be `/dispatch?repo=…`; plain `/` answers 404:
+
 ```bash
-curl -sS -X POST -H "Authorization: Bearer $DISPATCH_KEY" "https://aspa-scheduler.<subdomain>.workers.dev/dispatch?repo=ris-routing-data"
+curl -sS -X POST -H "Authorization: Bearer $DISPATCH_KEY" "https://$W/dispatch?repo=ris-routing-data"
 ```
+
+Never type the key directly into the command or paste it into a chat. If that
+happens, make a new one (4.5) and replace the `DISPATCH_KEY` secret.
 
 A good result is HTTP 200 with JSON like:
 
@@ -330,7 +352,8 @@ Pasting code doesn't change the secrets or the Cron Triggers.
 | `GITHUB_TOKEN secret is not set` | Secret missing, misspelled, or added as type Text | 4.5 |
 | `no job in JOBS has cron "…"` | A dashboard Cron Trigger doesn't match any `JOBS` entry | Make the two match exactly, or remove the trigger |
 | Cron Events shows nothing | Trigger added less than 15 min ago, or not added at all | 4.6 |
-| curl returns `404 not found` | `DISPATCH_KEY` not set, or wrong path (it must be `/dispatch`) | 4.5 |
+| curl returns `404 not found` | `DISPATCH_KEY` not set, or wrong path (it must be `/dispatch?repo=…`) | 4.5 / 5.1 |
+| "This uploader does not yet support projects that require a build process" | Used **Upload static files** | Use **Start with Hello World! → Edit code** (4.2) |
 | curl returns `401 unauthorized` | Wrong `DISPATCH_KEY` | Use the value from your password manager |
 | 204 in logs, but no run on GitHub | Actions disabled for the repo, or the workflow is turned off | Repo → Actions → enable the workflow |
 
