@@ -34,6 +34,13 @@ const JOBS = [
     enabled: true,
   },
   {
+    repo: "aspa-monitor.github.io",
+    workflow: "pages.yml",        // "Build and deploy site"
+    ref: "main",
+    cron: "35 * * * *",           // :35 UTC = :05 IST, 15 min after the RIS run
+    enabled: true,
+  },
+  {
     repo: "rpki-aspa-data",
     workflow: "rpki.yml",         // TODO: confirm the file name once the repo exists
     ref: "main",

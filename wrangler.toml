@@ -16,6 +16,7 @@ workers_dev = true
 # Cloudflare cron is UTC. Only enabled jobs need a trigger.
 crons = [
   "20 * * * *",   # :50 IST  ris-routing-data
+  "35 * * * *",   # :05 IST  aspa-monitor.github.io
   # "30 * * * *", # :00 IST  rpki-aspa-data   (enable with JOBS entry)
   # "50 * * * *", # :20 IST  aspa-validation  (enable with JOBS entry)
 ]

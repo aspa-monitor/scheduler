@@ -57,7 +57,7 @@ check("ist formats +05:30", ist(Date.UTC(2026, 10, 25, 8, 20, 0)) === "2026-11-2
 // Config sanity: unique crons/repos, valid shapes
 check("repos unique", new Set(JOBS.map((j) => j.repo)).size === JOBS.length);
 check("crons unique", new Set(JOBS.map((j) => j.cron)).size === JOBS.length);
-check("only ris enabled", JOBS.filter((j) => j.enabled).map((j) => j.repo).join() === "ris-routing-data");
+check("enabled jobs", JOBS.filter((j) => j.enabled).map((j) => j.repo).join() === "ris-routing-data,aspa-monitor.github.io");
 
 // Cron :20 UTC dispatches ris-routing-data correctly
 reset();
@@ -73,6 +73,14 @@ check("api version", h["X-GitHub-Api-Version"] === "2022-11-28");
 check("generic UA", h["User-Agent"] === "aspa-scheduler (Cloudflare Worker)");
 check("log in IST", logs.some((l) => l.includes("2026-11-25 13:50:00 IST")));
 check("logs 204", logs.some((l) => l.includes("HTTP 204")));
+
+// Cron :35 UTC dispatches only the website repo
+reset();
+await worker.scheduled({ cron: "35 * * * *", scheduledTime: Date.UTC(2026, 10, 26, 6, 35) }, env, {});
+check("site: one call", calls.length === 1);
+check("site: url", calls.length === 1 && calls[0].url === "https://api.github.com/repos/aspa-monitor/aspa-monitor.github.io/actions/workflows/pages.yml/dispatches");
+check("site: body", calls.length === 1 && calls[0].init.body === '{"ref":"main"}');
+check("site: log in IST", logs.some((l) => l.includes("2026-11-26 12:05:00 IST")));
 
 // Disabled job's cron: no call
 reset();

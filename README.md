@@ -8,7 +8,8 @@ calling GitHub's `workflow_dispatch` API on a reliable Cloudflare Cron Trigger.
 `ris-routing-data` fired in only about 2 of 37 hourly slots over two days,
 even after the workflow was turned off and on again. Adding more cron lines
 does not help at that rate, so an external clock starts the runs instead.
-GitHub's own cron stays in each workflow as a backup.
+The website repo `aspa-monitor.github.io` had the same problem, so the Worker
+starts its build too. GitHub's own cron stays in each workflow as a backup.
 
 All times below are **IST (UTC+05:30)**. Cloudflare cron expressions are
 always UTC, so each one is shown with its IST equivalent.
@@ -43,6 +44,7 @@ Cloudflare Cron Trigger (UTC)          GitHub REST API                         G
 | Repo | Workflow file | Cloudflare cron (UTC) | Fires at (IST) | Status |
 |---|---|---|---|---|
 | `ris-routing-data` | `ris.yml` ("RIS snapshot") | `20 * * * *` | every hour at **:50** | **enabled** |
+| `aspa-monitor.github.io` | `pages.yml` ("Build and deploy site") | `35 * * * *` | every hour at **:05** | **enabled** |
 | `rpki-aspa-data` | `rpki.yml` *(to confirm)* | `30 * * * *` | every hour at **:00** | disabled, repo not created yet |
 | `aspa-validation` | `validation.yml` *(to confirm)* | `50 * * * *` | every hour at **:20** | disabled, repo not created yet |
 
@@ -70,7 +72,17 @@ Every log line is stamped in IST, for example
 in the same hour, `concurrency: group: ris-snapshot` (with
 `cancel-in-progress: false`) makes the second run wait. Because the first run
 has already processed the latest RIS files, the second one finishes quickly
-in `continue` mode. Use the same concurrency pattern in the other two repos.
+in `continue` mode. Use the same concurrency pattern in the other repos.
+
+**Website build at :05 IST.** The site build starts 15 minutes after the RIS
+run, which takes about 4 minutes, so each build has fresh data. `pages.yml`
+keeps its own GitHub cron (`35 * * * *`) as a backup, and its `concurrency:
+group: pages` stops two builds from overlapping. One difference: `pages.yml`
+checks whether the RIS release is newer than the live site **only for
+`schedule` runs**. Every other event, including the Worker's
+`workflow_dispatch`, always rebuilds and deploys. So the site is rebuilt every
+hour even in an hour when RIS published nothing new. That costs one build
+(free on a public repo) and doesn't change the data shown.
 
 **Manual test endpoint (optional).** `POST /dispatch?repo=<name>` on the
 Worker's `workers.dev` URL with `Authorization: Bearer <DISPATCH_KEY>` sends one
@@ -100,13 +112,13 @@ Values from the Cloudflare docs, read 2026-11-25:
 
 | Limit (Workers Free) | Value | Our usage |
 |---|---|---|
-| Cron Triggers per **account** | 5 | 1 now, 3 when all repos are enabled |
-| Requests per day (resets 00:00 UTC = 05:30 IST) | 100,000 | about 24 to 72 cron runs, plus any manual tests |
+| Cron Triggers per **account** | 5 | 2 now, 4 when all repos are enabled |
+| Requests per day (resets 00:00 UTC = 05:30 IST) | 100,000 | about 48 to 96 cron runs, plus any manual tests |
 | CPU time per cron invocation | 10 ms | well under 1 ms. Waiting on `fetch` is I/O and does not count as CPU. |
 | Wall-clock time per cron invocation | 15 min | about 1 s (at most about 10 s with one retry) |
 | Subrequests (`fetch`) per invocation | 50 | 1, or 2 with a retry |
 | Workers Logs | 200,000 events/day, kept 3 days | a few hundred per day |
-| Cron Events history (dashboard) | last 100 invocations | about 4 days at one trigger per hour |
+| Cron Events history (dashboard) | last 100 invocations | about 2 days with two triggers per hour |
 
 Notes:
 - Cron Triggers are UTC, and a change to them can take **up to 15 minutes** to take effect.
@@ -170,7 +182,7 @@ This is needed once, as org owner:
 2. **Token name:** `aspa-scheduler (Cloudflare)`. **Description:** "Starts hourly workflow_dispatch runs".
 3. **Resource owner:** **aspa-monitor**, not your personal account.
 4. **Expiration:** pick a custom date, for example one year ahead. **Add a calendar reminder 7 days before that date** (see [§6](#6-renewing-the-github-token)).
-5. **Repository access:** **Only select repositories → `ris-routing-data`**. Add the other repos later ([§7](#7-adding-rpki-aspa-data-and-aspa-validation)).
+5. **Repository access:** **Only select repositories → `ris-routing-data` and `aspa-monitor.github.io`**. Add the other repos later ([§7](#7-adding-rpki-aspa-data-and-aspa-validation)).
 6. **Permissions → Repository permissions → Actions: Read and write.**
    GitHub adds **Metadata: Read-only** automatically, and that is required.
    Grant **nothing else**.
@@ -206,8 +218,11 @@ stay in place when you paste new code.
 **aspa-scheduler → Settings → Trigger Events → + Add → Cron Triggers**:
 
 - Choose a custom cron expression and enter exactly **`20 * * * *`**. That is
-  :20 UTC, which is **:50 IST** every hour.
-- Click **Add**. It can take up to 15 minutes before the first run.
+  :20 UTC, which is **:50 IST** every hour (ris-routing-data).
+- Click **Add**, then **+ Add** again and enter exactly **`35 * * * *`**. That is
+  :35 UTC, which is **:05 IST** every hour (aspa-monitor.github.io).
+- The dashboard shows the next run in UTC, for example "Next … 06:20:00"
+  (11:50 IST). It can take up to 15 minutes before the first run.
 
 Add only triggers for enabled jobs. Each one counts toward the 5 per account.
 
@@ -259,6 +274,8 @@ See [§9](#9-troubleshooting).
   ```
   Expect a `workflow_dispatch` line at about **:50 IST** every hour. An
   occasional `schedule` line is GitHub's backup cron.
+- **Website:** the same command with `--repo aspa-monitor/aspa-monitor.github.io --workflow pages.yml`
+  should show a `workflow_dispatch` line at about **:05 IST** every hour.
 
 ### 5.3 On Cloudflare: cron history and logs
 
@@ -269,8 +286,8 @@ See [§9](#9-troubleshooting).
   **Live** view to watch the next :50 IST run as it happens. This replaces
   `wrangler tail`, so you don't need the CLI.
 
-After the first few hours, every hour at :50 IST should show a success in
-Cloudflare and a `workflow_dispatch` run in GitHub.
+After the first few hours, every hour should show two successes in
+Cloudflare (:50 IST and :05 IST), each with a `workflow_dispatch` run in GitHub.
 
 ## 6. Renewing the GitHub token
 
@@ -321,7 +338,7 @@ Do this for each repo once it exists on GitHub. The example uses `rpki-aspa-data
 6. In `wrangler.toml`, uncomment the matching cron line to keep the reference
    file in sync.
 
-With all three repos enabled, the account uses **3 of 5** free Cron Triggers.
+With all four repos enabled, the account uses **4 of 5** free Cron Triggers.
 
 ## 8. Changing the code
 
@@ -334,7 +351,7 @@ After every change:
    ```bash
    cd ~/Desktop/ASPA_Validation/scheduler && /System/Library/Frameworks/JavaScriptCore.framework/Versions/Current/Helpers/jsc -m test/worker.test.mjs
    ```
-   Expect `31 passed, 0 failed`. A failing test makes the command exit non-zero.
+   Expect `35 passed, 0 failed`. A failing test makes the command exit non-zero.
 3. Commit and push.
 4. Copy the file with `pbcopy < src/worker.js`, paste it into **Edit code**,
    and click **Deploy**.
