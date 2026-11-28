@@ -49,10 +49,10 @@ const JOBS = [
   },
   {
     repo: "aspa-validation",
-    workflow: "validation.yml",   // TODO: confirm the file name once the repo exists
+    workflow: "validation.yml",   // "ASPA validation"
     ref: "main",
     cron: "50 * * * *",           // :50 UTC = :20 IST
-    enabled: false,               // repo not on GitHub yet
+    enabled: true,
   },
 ];
 // ---------------------------------------------------------------------------

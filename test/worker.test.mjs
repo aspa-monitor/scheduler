@@ -57,7 +57,7 @@ check("ist formats +05:30", ist(Date.UTC(2026, 10, 25, 8, 20, 0)) === "2026-11-2
 // Config sanity: unique crons/repos, valid shapes
 check("repos unique", new Set(JOBS.map((j) => j.repo)).size === JOBS.length);
 check("crons unique", new Set(JOBS.map((j) => j.cron)).size === JOBS.length);
-check("enabled jobs", JOBS.filter((j) => j.enabled).map((j) => j.repo).join() === "ris-routing-data,aspa-monitor.github.io,rpki-aspa-data");
+check("enabled jobs", JOBS.filter((j) => j.enabled).map((j) => j.repo).join() === "ris-routing-data,aspa-monitor.github.io,rpki-aspa-data,aspa-validation");
 
 // Cron :20 UTC dispatches ris-routing-data correctly
 reset();
@@ -87,10 +87,10 @@ reset();
 await worker.scheduled({ cron: "30 * * * *", scheduledTime: Date.now() }, env, {});
 check("rpki: url", calls.length === 1 && calls[0].url === "https://api.github.com/repos/aspa-monitor/rpki-aspa-data/actions/workflows/rpki.yml/dispatches");
 
-// Disabled job's cron: no call
+// aspa-validation at :50 UTC
 reset();
 await worker.scheduled({ cron: "50 * * * *", scheduledTime: Date.now() }, env, {});
-check("disabled -> no call", calls.length === 0);
+check("validation: url", calls.length === 1 && calls[0].url === "https://api.github.com/repos/aspa-monitor/aspa-validation/actions/workflows/validation.yml/dispatches");
 
 // Unknown cron: no call, warning
 reset();
@@ -148,7 +148,7 @@ r = await worker.fetch(req(`${base}/dispatch?repo=ris-routing-data`, "POST", { A
 check("manual ok -> 200", r.status === 200 && calls.length === 1);
 reset([{ status: 404 }]);
 r = await worker.fetch(req(`${base}/dispatch?repo=aspa-validation`, "POST", { Authorization: "Bearer test-key" }), env);
-check("manual disabled repo allowed, GitHub 404 -> 502", r.status === 502 && calls.length === 1);
+check("manual dispatch, GitHub 404 -> 502", r.status === 502 && calls.length === 1);
 
 print(`${passed} passed, ${failed} failed`);
 if (failed) throw new Error(`${failed} test(s) failed`);
