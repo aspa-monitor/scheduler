@@ -45,7 +45,7 @@ Cloudflare Cron Trigger (UTC)          GitHub REST API                         G
 |---|---|---|---|---|
 | `ris-routing-data` | `ris.yml` ("RIS snapshot") | `20 * * * *` | every hour at **:50** | **enabled** |
 | `aspa-monitor.github.io` | `pages.yml` ("Build and deploy site") | `35 * * * *` | every hour at **:05** | **enabled** |
-| `rpki-aspa-data` | `rpki.yml` *(to confirm)* | `30 * * * *` | every hour at **:00** | disabled, repo not created yet |
+| `rpki-aspa-data` | `rpki.yml` ("RPKI snapshot") | `30 * * * *` | every hour at **:00** | **enabled** |
 | `aspa-validation` | `validation.yml` *(to confirm)* | `50 * * * *` | every hour at **:20** | disabled, repo not created yet |
 
 The list lives in the `JOBS` array at the top of [`src/worker.js`](src/worker.js).

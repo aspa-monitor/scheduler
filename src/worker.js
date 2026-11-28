@@ -42,10 +42,10 @@ const JOBS = [
   },
   {
     repo: "rpki-aspa-data",
-    workflow: "rpki.yml",         // TODO: confirm the file name once the repo exists
+    workflow: "rpki.yml",         // "RPKI snapshot"
     ref: "main",
     cron: "30 * * * *",           // :30 UTC = :00 IST
-    enabled: false,               // repo not on GitHub yet
+    enabled: true,
   },
   {
     repo: "aspa-validation",

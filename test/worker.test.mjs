@@ -57,7 +57,7 @@ check("ist formats +05:30", ist(Date.UTC(2026, 10, 25, 8, 20, 0)) === "2026-11-2
 // Config sanity: unique crons/repos, valid shapes
 check("repos unique", new Set(JOBS.map((j) => j.repo)).size === JOBS.length);
 check("crons unique", new Set(JOBS.map((j) => j.cron)).size === JOBS.length);
-check("enabled jobs", JOBS.filter((j) => j.enabled).map((j) => j.repo).join() === "ris-routing-data,aspa-monitor.github.io");
+check("enabled jobs", JOBS.filter((j) => j.enabled).map((j) => j.repo).join() === "ris-routing-data,aspa-monitor.github.io,rpki-aspa-data");
 
 // Cron :20 UTC dispatches ris-routing-data correctly
 reset();
@@ -82,9 +82,14 @@ check("site: url", calls.length === 1 && calls[0].url === "https://api.github.co
 check("site: body", calls.length === 1 && calls[0].init.body === '{"ref":"main"}');
 check("site: log in IST", logs.some((l) => l.includes("2026-11-26 12:05:00 IST")));
 
-// Disabled job's cron: no call
+// rpki-aspa-data at :30 UTC
 reset();
 await worker.scheduled({ cron: "30 * * * *", scheduledTime: Date.now() }, env, {});
+check("rpki: url", calls.length === 1 && calls[0].url === "https://api.github.com/repos/aspa-monitor/rpki-aspa-data/actions/workflows/rpki.yml/dispatches");
+
+// Disabled job's cron: no call
+reset();
+await worker.scheduled({ cron: "50 * * * *", scheduledTime: Date.now() }, env, {});
 check("disabled -> no call", calls.length === 0);
 
 // Unknown cron: no call, warning
@@ -142,7 +147,7 @@ check("unknown repo -> 400", r.status === 400 && calls.length === 0);
 r = await worker.fetch(req(`${base}/dispatch?repo=ris-routing-data`, "POST", { Authorization: "Bearer test-key" }), env);
 check("manual ok -> 200", r.status === 200 && calls.length === 1);
 reset([{ status: 404 }]);
-r = await worker.fetch(req(`${base}/dispatch?repo=rpki-aspa-data`, "POST", { Authorization: "Bearer test-key" }), env);
+r = await worker.fetch(req(`${base}/dispatch?repo=aspa-validation`, "POST", { Authorization: "Bearer test-key" }), env);
 check("manual disabled repo allowed, GitHub 404 -> 502", r.status === 502 && calls.length === 1);
 
 print(`${passed} passed, ${failed} failed`);
